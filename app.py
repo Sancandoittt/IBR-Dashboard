@@ -23,9 +23,14 @@ else:
     st.info("Please upload your exported Google Forms file to begin.")
     st.stop()
 
-# 2. Data Cleaning (example: rename columns if needed)
-# st.write(df.head())
-# Uncomment and adjust to your column names if necessary
+# 2. Data Cleaning
+df.columns = df.columns.str.strip()
+# If you want to ignore case differences, use:
+# df.columns = df.columns.str.strip().str.lower()
+
+# Optional: check what your cleaned columns look like
+st.write("Cleaned column names:", df.columns.tolist())
+
 
 # 3. Sidebar Filters
 with st.sidebar:
@@ -74,12 +79,12 @@ likert_cols = [
     'AI assistants save me time in-store or online.',
     'I trust recommendations made by AI shopping assistants.',
     'I feel confident that my data is safe when using AI features.',
+    'I feel confident that my data is safe when using AI features..1',
     'I find AI shopping assistants easy to use and understand.',
     'It doesn’t take much effort to learn how to use these assistants.',
     'AI shopping assistants give me recommendations that match my taste.',
     'I feel like AI shopping assistants understand what I want.',
     'I appreciate when an AI shopping assistant speaks my language or uses familiar cultural references.',
-    'The tone and style of AI assistants in Dubai suit me.',
     'I enjoy chatting with an AI shopping assistant.',
     'Sometimes, AI assistants “get me” better than human staff.'
 ]
