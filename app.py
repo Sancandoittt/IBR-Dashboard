@@ -103,6 +103,42 @@ st.pyplot(fig)
 
 # d. Regression: Which factors predict likelihood to recommend?
 st.subheader("Regression: What drives willingness to recommend AI shopping assistants?")
+
+if 'Would you recommend using AI-powered shopping assistants to others?' in filtered_df.columns:
+    # Map Yes=1, No=0, Maybe=0.5 (you can adjust if needed)
+    y = filtered_df['Would you recommend using AI-powered shopping assistants to others?'].map({'Yes':1, 'No':0, 'Maybe':0.5})
+    X = likert_num
+    X = sm.add_constant(X)
+    model = sm.OLS(y, X, missing='drop').fit()
+
+    # Create a summary dataframe with key stats
+    results_df = pd.DataFrame({
+        'Coefficient': model.params,
+        'Std Error': model.bse,
+        'P-value': model.pvalues
+    })
+
+    # Display full regression results in a formatted table
+    st.dataframe(results_df.style.format({
+        'Coefficient': '{:.3f}',
+        'Std Error': '{:.3f}',
+        'P-value': '{:.3f}'
+    }))
+
+    # Highlight and show only statistically significant predictors (p < 0.05)
+    significant = results_df[results_df['P-value'] < 0.05]
+    if not significant.empty:
+        st.markdown("**Significant Predictors (p < 0.05):**")
+        st.dataframe(significant)
+
+    # Optional interpretation note
+    st.markdown("""
+    > **Interpretation:**  
+    > Predictors with positive coefficients and p-values below 0.05 significantly influence willingness to recommend AI shopping assistants.
+    """)
+else:
+    st.warning("Recommendation question not found in data.")
+
 # Example: Predict "Would you recommend using AI-powered shopping assistants to others?" (encode Yes=1, No/Maybe=0)
 if 'Would you recommend using AI-powered shopping assistants to others?' in filtered_df.columns:
     y = filtered_df['Would you recommend using AI-powered shopping assistants to others?'].map({'Yes':1, 'No':0, 'Maybe':0.5})
