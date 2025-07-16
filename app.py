@@ -18,6 +18,7 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
     st.success(f"Loaded {len(df)} responses! Ready for analysis.")
     st.write("Columns in your uploaded file:", df.columns.tolist())
+
 else:
     st.info("Please upload your exported Google Forms file to begin.")
     st.stop()
