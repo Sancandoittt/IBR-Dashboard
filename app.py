@@ -17,20 +17,17 @@ if uploaded_file:
     else:
         df = pd.read_excel(uploaded_file)
     st.success(f"Loaded {len(df)} responses! Ready for analysis.")
+    # Show original columns
     st.write("Columns in your uploaded file:", df.columns.tolist())
-
 else:
     st.info("Please upload your exported Google Forms file to begin.")
     st.stop()
 
-# 2. Data Cleaning
+# 2. Data Cleaning - strip whitespace from column names
 df.columns = df.columns.str.strip()
-# If you want to ignore case differences, use:
-# df.columns = df.columns.str.strip().str.lower()
 
-# Optional: check what your cleaned columns look like
+# Optional: check cleaned column names
 st.write("Cleaned column names:", df.columns.tolist())
-
 
 # 3. Sidebar Filters
 with st.sidebar:
@@ -104,53 +101,44 @@ st.pyplot(fig)
 # d. Regression: Which factors predict likelihood to recommend?
 st.subheader("Regression: What drives willingness to recommend AI shopping assistants?")
 
-if 'Would you recommend using AI-powered shopping assistants to others?' in filtered_df.columns:
-    # Map Yes=1, No=0, Maybe=0.5 (you can adjust if needed)
-    y = filtered_df['Would you recommend using AI-powered shopping assistants to others?'].map({'Yes':1, 'No':0, 'Maybe':0.5})
+target_col = 'Would you recommend using AI-powered shopping assistants to others?'
+
+if target_col in filtered_df.columns:
+    y = filtered_df[target_col].map({'Yes':1, 'No':0, 'Maybe':0.5})
     X = likert_num
     X = sm.add_constant(X)
     model = sm.OLS(y, X, missing='drop').fit()
 
-    # Create a summary dataframe with key stats
     results_df = pd.DataFrame({
         'Coefficient': model.params,
         'Std Error': model.bse,
         'P-value': model.pvalues
     })
 
-    # Display full regression results in a formatted table
     st.dataframe(results_df.style.format({
         'Coefficient': '{:.3f}',
         'Std Error': '{:.3f}',
         'P-value': '{:.3f}'
     }))
 
-    # Highlight and show only statistically significant predictors (p < 0.05)
     significant = results_df[results_df['P-value'] < 0.05]
     if not significant.empty:
         st.markdown("**Significant Predictors (p < 0.05):**")
         st.dataframe(significant)
 
-    # Optional interpretation note
     st.markdown("""
     > **Interpretation:**  
     > Predictors with positive coefficients and p-values below 0.05 significantly influence willingness to recommend AI shopping assistants.
     """)
 else:
-    st.warning("Recommendation question not found in data.")
-
-# Example: Predict "Would you recommend using AI-powered shopping assistants to others?" (encode Yes=1, No/Maybe=0)
-if 'Would you recommend using AI-powered shopping assistants to others?' in filtered_df.columns:
-    y = filtered_df['Would you recommend using AI-powered shopping assistants to others?'].map({'Yes':1, 'No':0, 'Maybe':0.5})
-    X = likert_num
-    X = sm.add_constant(X)
-    model = sm.OLS(y, X, missing='drop').fit()
-    st.write(model.summary())
+    st.warning(f"Column '{target_col}' not found in data.")
 
 # e. Word Cloud: Open-ended feedback
 st.subheader("Open-Ended Feedback (Word Cloud)")
-if 'Any ideas or suggestions for how Dubai retailers can make AI shopping assistants better for you?' in filtered_df.columns:
-    text = ' '.join(filtered_df['Any ideas or suggestions for how Dubai retailers can make AI shopping assistants better for you?'].dropna())
+open_ended_col = 'Any ideas or suggestions for how Dubai retailers can make AI shopping assistants better for you?'
+
+if open_ended_col in filtered_df.columns:
+    text = ' '.join(filtered_df[open_ended_col].dropna())
     wc = WordCloud(width=800, height=400, background_color='white').generate(text)
     plt.figure(figsize=(10,5))
     plt.imshow(wc, interpolation='bilinear')
