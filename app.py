@@ -32,7 +32,11 @@ if uploaded_file.name.endswith('.csv'):
 else:
     df = pd.read_excel(uploaded_file)
 
+# Clean columns
 df.columns = df.columns.str.strip()
+
+# Define open-ended feedback column here near top
+open_ended_col = 'Any ideas or suggestions for how Dubai retailers can make AI shopping assistants better for you?'
 
 # Sidebar Filters
 with st.sidebar:
@@ -82,7 +86,7 @@ mapped_scores = filtered_df[available_likert_cols].replace(likert_map)
 filtered_df['Avg Likert Score'] = mapped_scores.mean(axis=1)
 avg_likert_score = filtered_df['Avg Likert Score'].mean()
 
-# Define tab labels
+# Define tabs
 tabs = st.tabs([
     "Overview & Demographics",
     "Likert Analysis & Correlations",
@@ -218,7 +222,6 @@ with tabs[3]:
 with tabs[4]:
     st.subheader("Customer Journey Flow: Awareness → Trust → Satisfaction → Adoption")
 
-    # Example simplified Sankey data - customize this with your real data counts
     labels = [
         "Aware", "Not Aware",
         "Trust High", "Trust Low",
@@ -301,6 +304,8 @@ with tabs[7]:
     st.metric("Total Survey Responses", len(filtered_df))
     st.metric("Average Digital Comfort Score", round(filtered_df['How comfortable are you with using new digital technology?'].mean(), 2))
     st.metric("Average Likert Score", round(avg_likert_score, 2))
+
+    target_col_recommend = 'Would you recommend using AI-powered shopping assistants to others?'
 
     if target_col_recommend in filtered_df.columns:
         adoption_rate = filtered_df[target_col_recommend].map({'Yes': 1, 'No': 0, 'Maybe': 0}).mean()
