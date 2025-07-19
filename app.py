@@ -330,6 +330,7 @@ with tabs[7]:
 
     # Dynamic Recommendations (simple logic based on data)
     st.markdown("### Recommendations")
+if adoption_rate is not None:
     if adoption_rate < 0.5:
         st.write("- Focus on building trust and transparency about data privacy.")
     else:
@@ -338,8 +339,8 @@ with tabs[7]:
         st.write("- Provide educational resources to increase digital comfort.")
     else:
         st.write("- Leverage tech-savvy customers for early adoption campaigns.")
-
-    st.write("Consider targeted messaging for different demographic segments.")
+else:
+    st.write("Adoption rate data not available for current filters.")
 
 st.markdown("---")
 st.caption("Dashboard by Sanchit Singh Thapa | MBA Research | SP Jain")
