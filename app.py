@@ -21,43 +21,25 @@ else:
     st.info("Please upload your exported Google Forms file to begin.")
     st.stop()
 
-# 2. Data Cleaning - strip whitespace from column names
+# Data Cleaning - strip whitespace from column names
 df.columns = df.columns.str.strip()
 
-
-# 3. Sidebar Filters
+# Sidebar Filters
 with st.sidebar:
     st.header("Filter Responses")
     age_filter = st.multiselect("Age", options=df['How old are you?'].unique())
     nationality_filter = st.multiselect("Nationality", options=df['What best describes you?'].unique())
     shopping_style_filter = st.multiselect("Shopping Style", options=df['How do you usually shop in Dubai?'].unique())
 
-    filtered_df = df.copy()
-    if age_filter:
-        filtered_df = filtered_df[filtered_df['How old are you?'].isin(age_filter)]
-    if nationality_filter:
-        filtered_df = filtered_df[filtered_df['What best describes you?'].isin(nationality_filter)]
-    if shopping_style_filter:
-        filtered_df = filtered_df[filtered_df['How do you usually shop in Dubai?'].isin(shopping_style_filter)]
+filtered_df = df.copy()
+if age_filter:
+    filtered_df = filtered_df[filtered_df['How old are you?'].isin(age_filter)]
+if nationality_filter:
+    filtered_df = filtered_df[filtered_df['What best describes you?'].isin(nationality_filter)]
+if shopping_style_filter:
+    filtered_df = filtered_df[filtered_df['How do you usually shop in Dubai?'].isin(shopping_style_filter)]
 
-st.subheader("Quick Demographics")
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Responses", len(filtered_df))
-col2.metric("Avg Digital Comfort", round(filtered_df['How comfortable are you with using new digital technology?'].mean(),2))
-col3.metric("Online Shoppers (%)", round((filtered_df['How do you usually shop in Dubai?'].value_counts(normalize=True).get('Online (web/app)',0))*100,1))
-
-st.markdown("---")
-
-# 4. Visualizations
-
-# a. Age/Nationality Distribution
-st.subheader("Respondent Profile")
-fig, ax = plt.subplots(1,2, figsize=(12,4))
-filtered_df['How old are you?'].value_counts().sort_index().plot(kind='bar', ax=ax[0], color='royalblue', title="Age")
-filtered_df['What best describes you?'].value_counts().plot(kind='pie', autopct='%1.0f%%', ax=ax[1], title="Nationality")
-st.pyplot(fig)
-
-# b. Likert Averages for Key Constructs
+# Map Likert responses to numeric values
 likert_map = {
     "Strongly Disagree": 1,
     "Disagree": 2,
@@ -82,26 +64,47 @@ likert_cols = [
     'Sometimes, AI assistants “get me” better than human staff.'
 ]
 
+# Calculate Avg Likert Score per respondent and overall
+mapped_scores = filtered_df[likert_cols].replace(likert_map)
+filtered_df['Avg Likert Score'] = mapped_scores.mean(axis=1)
+avg_likert_score = filtered_df['Avg Likert Score'].mean()
+
+# Metrics display
+st.subheader("Quick Demographics")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total Responses", len(filtered_df))
+col2.metric("Avg Digital Comfort", round(filtered_df['How comfortable are you with using new digital technology?'].mean(), 2))
+col3.metric("Online Shoppers (%)", round((filtered_df['How do you usually shop in Dubai?'].value_counts(normalize=True).get('Online (web/app)', 0)) * 100, 1))
+col4.metric("Avg Likert Score", round(avg_likert_score, 2))
+
+st.markdown("---")
+
+# Respondent Profile Visualization
+st.subheader("Respondent Profile")
+fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+filtered_df['How old are you?'].value_counts().sort_index().plot(kind='bar', ax=ax[0], color='royalblue', title="Age")
+filtered_df['What best describes you?'].value_counts().plot(kind='pie', autopct='%1.0f%%', ax=ax[1], title="Nationality")
+st.pyplot(fig)
+
+# Likert means bar chart
 st.subheader("Key Drivers: Means (1=Strongly Disagree, 5=Strongly Agree)")
-means = filtered_df[likert_cols].replace(likert_map).mean()
+means = mapped_scores.mean()
 st.bar_chart(means)
 
-# c. Correlation Matrix
+# Correlation Heatmap
 st.subheader("Correlation Heatmap of Attitudes")
-likert_num = filtered_df[likert_cols].replace(likert_map)
-corr = likert_num.corr()
-fig, ax = plt.subplots(figsize=(10,7))
+corr = mapped_scores.corr()
+fig, ax = plt.subplots(figsize=(10, 7))
 sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
 st.pyplot(fig)
 
-# d. Regression: Which factors predict likelihood to recommend?
+# Regression
 st.subheader("Regression: What drives willingness to recommend AI shopping assistants?")
-
 target_col = 'Would you recommend using AI-powered shopping assistants to others?'
 
 if target_col in filtered_df.columns:
-    y = filtered_df[target_col].map({'Yes':1, 'No':0, 'Maybe':0.5})
-    X = likert_num
+    y = filtered_df[target_col].map({'Yes': 1, 'No': 0, 'Maybe': 0.5})
+    X = mapped_scores
     X = sm.add_constant(X)
     model = sm.OLS(y, X, missing='drop').fit()
 
@@ -129,14 +132,14 @@ if target_col in filtered_df.columns:
 else:
     st.warning(f"Column '{target_col}' not found in data.")
 
-# e. Word Cloud: Open-ended feedback
+# Word Cloud for open-ended feedback
 st.subheader("Open-Ended Feedback (Word Cloud)")
 open_ended_col = 'Any ideas or suggestions for how Dubai retailers can make AI shopping assistants better for you?'
 
 if open_ended_col in filtered_df.columns:
     text = ' '.join(filtered_df[open_ended_col].dropna())
     wc = WordCloud(width=800, height=400, background_color='white').generate(text)
-    plt.figure(figsize=(10,5))
+    plt.figure(figsize=(10, 5))
     plt.imshow(wc, interpolation='bilinear')
     plt.axis('off')
     st.pyplot(plt)
