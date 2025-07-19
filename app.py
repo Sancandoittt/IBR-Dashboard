@@ -330,7 +330,7 @@ with tabs[7]:
 
     # Dynamic Recommendations (simple logic based on data)
     st.markdown("### Recommendations")
-if adoption_rate is not None:
+    if adoption_rate is not None:
     if adoption_rate < 0.5:
         st.write("- Focus on building trust and transparency about data privacy.")
     else:
