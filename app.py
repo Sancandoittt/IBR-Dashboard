@@ -89,6 +89,13 @@ st.pyplot(fig)
 # Likert means bar chart
 st.subheader("Key Drivers: Means (1=Strongly Disagree, 5=Strongly Agree)")
 means = mapped_scores.mean()
+st.subheader("Average Scores for Each Likert Question")
+avg_scores_df = pd.DataFrame({
+    'Question': means.index,
+    'Average Score': means.values.round(2)
+})
+
+st.table(avg_scores_df)
 st.bar_chart(means)
 
 # Correlation Heatmap
