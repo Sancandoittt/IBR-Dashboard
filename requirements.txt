@@ -3,5 +3,8 @@ pandas
 numpy
 matplotlib
 seaborn
-wordcloud
 statsmodels
+scikit-learn
+plotly
+textblob
+wordcloud
