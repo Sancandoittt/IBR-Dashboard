@@ -17,8 +17,6 @@ if uploaded_file:
     else:
         df = pd.read_excel(uploaded_file)
     st.success(f"Loaded {len(df)} responses! Ready for analysis.")
-    # Show original columns
-    st.write("Columns in your uploaded file:", df.columns.tolist())
 else:
     st.info("Please upload your exported Google Forms file to begin.")
     st.stop()
@@ -26,8 +24,6 @@ else:
 # 2. Data Cleaning - strip whitespace from column names
 df.columns = df.columns.str.strip()
 
-# Optional: check cleaned column names
-st.write("Cleaned column names:", df.columns.tolist())
 
 # 3. Sidebar Filters
 with st.sidebar:
