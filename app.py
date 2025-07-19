@@ -106,12 +106,21 @@ sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
 st.pyplot(fig)
 
 # Regression
-st.subheader("Regression: What drives willingness to recommend AI shopping assistants?")
-target_col = 'Would you recommend using AI-powered shopping assistants to others?'
+st.subheader("Regression: What drives positive response to AI shopping assistants?")
+
+target_col = 'Imagine you’re at Dubai Mall and a smart screen offers you a personalised deal based on your preferences, and can even speak your language.'
 
 if target_col in filtered_df.columns:
-    y = filtered_df[target_col].map({'Yes': 1, 'No': 0, 'Maybe': 0.5})
-    X = mapped_scores
+    # Map response categories to numeric Likert scores
+    response_map = {
+        'Excited': 5,
+        'Curious but cautious': 4,
+        'Neutral': 3,
+        'Uncomfortable': 2,
+        'Annoyed': 1
+    }
+    y = filtered_df[target_col].map(response_map)
+    X = filtered_df[likert_cols].replace(likert_map)
     X = sm.add_constant(X)
     model = sm.OLS(y, X, missing='drop').fit()
 
@@ -134,10 +143,11 @@ if target_col in filtered_df.columns:
 
     st.markdown("""
     > **Interpretation:**  
-    > Predictors with positive coefficients and p-values below 0.05 significantly influence willingness to recommend AI shopping assistants.
+    > Predictors with positive coefficients and p-values below 0.05 significantly influence positive reactions to AI shopping assistants.
     """)
 else:
     st.warning(f"Column '{target_col}' not found in data.")
+
 
 # Word Cloud for open-ended feedback
 st.subheader("Open-Ended Feedback (Word Cloud)")
