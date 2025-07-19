@@ -39,7 +39,7 @@ if nationality_filter:
 if shopping_style_filter:
     filtered_df = filtered_df[filtered_df['How do you usually shop in Dubai?'].isin(shopping_style_filter)]
 
-# Map Likert responses to numeric values
+# Likert mapping
 likert_map = {
     "Strongly Disagree": 1,
     "Disagree": 2,
@@ -64,8 +64,16 @@ likert_cols = [
     'Sometimes, AI assistants “get me” better than human staff.'
 ]
 
+# ========== KEY CHANGE: Filter likert_cols dynamically =============
+available_likert_cols = [col for col in likert_cols if col in filtered_df.columns]
+if not available_likert_cols:
+    st.warning("No Likert-scale questions available in filtered data for analysis.")
+    st.stop()
+# ===================================================================
+
+mapped_scores = filtered_df[available_likert_cols].replace(likert_map)
+
 # Calculate Avg Likert Score per respondent and overall
-mapped_scores = filtered_df[likert_cols].replace(likert_map)
 filtered_df['Avg Likert Score'] = mapped_scores.mean(axis=1)
 avg_likert_score = filtered_df['Avg Likert Score'].mean()
 
@@ -89,13 +97,6 @@ st.pyplot(fig)
 # Likert means bar chart
 st.subheader("Key Drivers: Means (1=Strongly Disagree, 5=Strongly Agree)")
 means = mapped_scores.mean()
-st.subheader("Average Scores for Each Likert Question")
-avg_scores_df = pd.DataFrame({
-    'Question': means.index,
-    'Average Score': means.values.round(2)
-})
-
-st.table(avg_scores_df)
 st.bar_chart(means)
 
 # Correlation Heatmap
@@ -107,11 +108,9 @@ st.pyplot(fig)
 
 # Regression
 st.subheader("Regression: What drives positive response to AI shopping assistants?")
-
 target_col = 'Imagine you’re at Dubai Mall and a smart screen offers you a personalised deal based on your preferences, and can even speak your language.'
 
 if target_col in filtered_df.columns:
-    # Map response categories to numeric Likert scores
     response_map = {
         'Excited': 5,
         'Curious but cautious': 4,
@@ -120,7 +119,7 @@ if target_col in filtered_df.columns:
         'Annoyed': 1
     }
     y = filtered_df[target_col].map(response_map)
-    X = filtered_df[likert_cols].replace(likert_map)
+    X = mapped_scores
     X = sm.add_constant(X)
     model = sm.OLS(y, X, missing='drop').fit()
 
@@ -147,7 +146,6 @@ if target_col in filtered_df.columns:
     """)
 else:
     st.warning(f"Column '{target_col}' not found in data.")
-
 
 # Word Cloud for open-ended feedback
 st.subheader("Open-Ended Feedback (Word Cloud)")
