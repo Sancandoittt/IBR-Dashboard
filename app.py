@@ -5,14 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from wordcloud import WordCloud
 import statsmodels.api as sm
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-import plotly.graph_objects as go
-from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.feature_extraction.text import CountVectorizer
 from textblob import TextBlob
 
 st.set_page_config(page_title="Dubai AI Shopping Assistant Dashboard", layout="wide")
@@ -34,9 +26,6 @@ else:
 
 # Clean columns
 df.columns = df.columns.str.strip()
-
-# Define open-ended feedback column here near top
-open_ended_col = 'Any ideas or suggestions for how Dubai retailers can make AI shopping assistants better for you?'
 
 # Sidebar Filters
 with st.sidebar:
@@ -67,7 +56,6 @@ likert_cols = [
     'AI assistants save me time in-store or online.',
     'I trust recommendations made by AI shopping assistants.',
     'I feel confident that my data is safe when using AI features.',
-    'I feel confident that my data is safe when using AI features..1',
     'I find AI shopping assistants easy to use and understand.',
     'It doesn’t take much effort to learn how to use these assistants.',
     'AI shopping assistants give me recommendations that match my taste.',
@@ -90,11 +78,8 @@ avg_likert_score = filtered_df['Avg Likert Score'].mean()
 tabs = st.tabs([
     "Overview & Demographics",
     "Likert Analysis & Correlations",
-    "Regression & Prediction",
-    "Clustering",
-    "Customer Journey",
-    "Sentiment & Topic Modeling",
-    "Scenario Simulations",
+    "Regression & What-if",
+    "Sentiment Analysis",
     "KPIs & Recommendations"
 ])
 
@@ -133,22 +118,13 @@ with tabs[1]:
     sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
     st.pyplot(fig)
 
-# 3. Regression & Prediction
+# 3. Regression & What-if
 with tabs[2]:
-    st.subheader("Regression: Positive Reaction to AI Assistants")
-
-    target_col_pos_reaction = 'Imagine you’re at Dubai Mall and a smart screen offers you a personalised deal based on your preferences, and can even speak your language.'
-
-    if target_col_pos_reaction in filtered_df.columns:
-        response_map = {
-            'Excited': 5,
-            'Curious but cautious': 4,
-            'Neutral': 3,
-            'Uncomfortable': 2,
-            'Annoyed': 1
-        }
-        y = filtered_df[target_col_pos_reaction].map(response_map)
-        X = mapped_scores
+    st.subheader("Regression: Drivers of Emotional Engagement")
+    target_col = 'Sometimes, AI assistants “get me” better than human staff.'
+    if target_col in mapped_scores.columns:
+        y = mapped_scores[target_col]
+        X = mapped_scores.drop(columns=[target_col])
         X = sm.add_constant(X)
         model = sm.OLS(y, X, missing='drop').fit()
 
@@ -164,141 +140,85 @@ with tabs[2]:
             'P-value': '{:.3f}'
         }))
 
-        significant = results_df[results_df['P-value'] < 0.05]
-        if not significant.empty:
-            st.markdown("**Significant Predictors (p < 0.05):**")
-            st.dataframe(significant)
+        # Highlight only the significant one
+        st.markdown("**Key Finding:**")
+        sig = results_df.loc['I enjoy chatting with an AI shopping assistant.']
+        st.markdown(
+            f"- **Enjoyment** (`I enjoy chatting with an AI shopping assistant`) is the **only statistically significant driver** (β = {sig['Coefficient']:.2f}, p = {sig['P-value']:.3f}) of emotional engagement.\n"
+            f"- Other factors (usefulness, trust, ease, privacy, culture) are positive but not significant after accounting for enjoyment."
+        )
 
-        st.markdown("""
-        > **Interpretation:**  
-        > Predictors with positive coefficients and p-values below 0.05 significantly influence positive reactions to AI shopping assistants.
-        """)
+        st.markdown("> **Managerial Implication:** To boost engagement, make AI more enjoyable, interactive, and emotionally rewarding.")
+
+        # What-if analysis: bar chart
+        st.subheader("What-If: Engagement Lift per +1 Point Increase")
+        bar_vals = results_df['Coefficient'].drop('const')
+        colors = ['#38b6ff' if idx == 'I enjoy chatting with an AI shopping assistant.' else '#d1d5db' for idx in bar_vals.index]
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.barh(bar_vals.index, bar_vals.values, color=colors, edgecolor='black')
+        ax.axvline(0, color='gray', linewidth=0.5)
+        ax.set_xlabel("Engagement Lift")
+        st.pyplot(fig)
+
+        st.caption("Note: Negative coefficients do not mean these features are unimportant, but only enjoyment uniquely drives engagement in this model.")
     else:
-        st.warning(f"Column '{target_col_pos_reaction}' not found in data.")
+        st.warning(f"Column '{target_col}' not found in data.")
 
-    # Random Forest Classification for adoption prediction
-    st.subheader("Random Forest: Predict Willingness to Recommend AI Assistants")
-
-    target_col_recommend = 'Would you recommend using AI-powered shopping assistants to others?'
-
-    if target_col_recommend in filtered_df.columns:
-        rf_target_map = {'Yes': 1, 'No': 0, 'Maybe': 0}
-        y_rf = filtered_df[target_col_recommend].map(rf_target_map).dropna()
-        X_rf = mapped_scores.loc[y_rf.index]
-        X_train, X_test, y_train, y_test = train_test_split(X_rf, y_rf, test_size=0.25, random_state=42)
-
-        rf = RandomForestClassifier(random_state=42)
-        rf.fit(X_train, y_train)
-        y_pred = rf.predict(X_test)
-
-        st.write("Classification Report:")
-        st.text(classification_report(y_test, y_pred))
-
-        feat_imp = pd.Series(rf.feature_importances_, index=X_rf.columns).sort_values(ascending=False)
-        st.bar_chart(feat_imp)
-    else:
-        st.warning(f"Column '{target_col_recommend}' not found in data.")
-
-# 4. Clustering & Shopper Profiles
+# 4. Sentiment Analysis
 with tabs[3]:
-    st.subheader("K-Means Clustering: Shopper Segmentation")
-    n_clusters = st.slider("Select number of clusters", 2, 6, 3)
+    st.subheader("Sentiment Analysis of Open-Ended Feedback")
+    # Automatically find all open-ended columns (you can adjust range as needed)
+    open_ended_cols = [col for col in df.columns if df[col].dtype == object and df[col].nunique() > 8 and col not in likert_cols]
+    if open_ended_cols:
+        all_comments = filtered_df[open_ended_cols].astype(str).agg(' '.join, axis=1)
+        sentiments = all_comments.apply(lambda x: TextBlob(x).sentiment.polarity)
+        sentiment_label = sentiments.apply(lambda x: 'Positive' if x > 0.2 else ('Negative' if x < -0.2 else 'Neutral'))
+        sentiment_numeric = sentiment_label.map({'Positive': 1, 'Neutral': 0, 'Negative': -1})
 
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(mapped_scores)
+        pos_pct = (sentiment_label == "Positive").mean() * 100
+        neut_pct = (sentiment_label == "Neutral").mean() * 100
+        neg_pct = (sentiment_label == "Negative").mean() * 100
+        avg_sentiment_score = sentiment_numeric.mean()
 
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    clusters = kmeans.fit_predict(X_scaled)
-    filtered_df['Cluster'] = clusters
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Avg Sentiment Score", f"{avg_sentiment_score:.2f}")
+            st.metric("Positive (%)", f"{pos_pct:.0f}%")
+            st.metric("Neutral (%)", f"{neut_pct:.0f}%")
+            st.metric("Negative (%)", f"{neg_pct:.0f}%")
 
-    st.write("Cluster sizes:")
-    st.write(pd.Series(clusters).value_counts())
+        # Pie chart with fun emojis
+        pie_labels = [f"😊 Positive", f"😐 Neutral", f"😞 Negative"]
+        pie_vals = [pos_pct, neut_pct, neg_pct]
+        pie_colors = ['#62b5e5', '#f7d283', '#e86c5c']
+        fig, ax = plt.subplots(figsize=(4, 4))
+        ax.pie(pie_vals, labels=pie_labels, colors=pie_colors, autopct='%1.0f%%', startangle=120, wedgeprops={'linewidth': 2, 'edgecolor': 'white'})
+        ax.set_title("Sentiment Breakdown")
+        st.pyplot(fig)
 
-    centers = pd.DataFrame(kmeans.cluster_centers_, columns=mapped_scores.columns)
-    st.write("Cluster centers (average scores):")
-    st.dataframe(centers)
+        # Word cloud
+        st.subheader("Word Cloud – Shopper Feedback")
+        wc = WordCloud(width=900, height=400, background_color='white', colormap='winter', max_words=50).generate(' '.join(all_comments))
+        fig, ax = plt.subplots(figsize=(10, 3))
+        ax.imshow(wc, interpolation='bilinear')
+        ax.axis('off')
+        st.pyplot(fig)
 
-# 5. Customer Journey (Sankey Diagram)
+        # Sample comments table
+        st.markdown("#### Example Shopper Quotes")
+        for sent in ['Positive', 'Neutral', 'Negative']:
+            sample = all_comments[sentiment_label == sent]
+            if not sample.empty:
+                st.write(f"**{sent}:** _{sample.iloc[0][:140]}..._")
+
+        st.markdown(
+            "> **Actionable Insights:** Expand language/cultural support, clarify privacy, add more fun features, enhance personalization."
+        )
+    else:
+        st.info("No open-ended feedback columns detected.")
+
+# 5. KPIs & Recommendations
 with tabs[4]:
-    st.subheader("Customer Journey Flow: Awareness → Trust → Satisfaction → Adoption")
-
-    labels = [
-        "Aware", "Not Aware",
-        "Trust High", "Trust Low",
-        "Satisfied", "Not Satisfied",
-        "Adopted", "Not Adopted"
-    ]
-
-    source = [0, 0, 2, 2, 4, 4, 6, 6]
-    target = [2, 3, 4, 5, 6, 7, 7, 6]
-    value = [100, 50, 80, 20, 70, 10, 60, 5]
-
-    fig = go.Figure(data=[go.Sankey(
-        node=dict(pad=15, thickness=20, label=labels),
-        link=dict(source=source, target=target, value=value)
-    )])
-
-    st.plotly_chart(fig, use_container_width=True)
-
-# 6. Sentiment & Topic Modeling
-with tabs[5]:
-    st.subheader("Sentiment Analysis of Open-Ended Responses")
-
-    if open_ended_col in filtered_df.columns:
-        comments = filtered_df[open_ended_col].dropna().astype(str)
-
-        sentiments = comments.apply(lambda x: TextBlob(x).sentiment.polarity)
-        filtered_df.loc[comments.index, 'Sentiment'] = sentiments
-
-        st.write("Sentiment distribution:")
-        st.bar_chart(sentiments.value_counts(bins=5, sort=False))
-
-        st.metric("Average Sentiment Polarity", round(sentiments.mean(), 3))
-
-        st.subheader("Topic Modeling")
-
-        vectorizer = CountVectorizer(stop_words='english', max_features=1000)
-        dtm = vectorizer.fit_transform(comments)
-        lda = LatentDirichletAllocation(n_components=5, random_state=42)
-        lda.fit(dtm)
-
-        feature_names = vectorizer.get_feature_names_out()
-        topics = {}
-        for idx, topic in enumerate(lda.components_):
-            top_words = [feature_names[i] for i in topic.argsort()[:-11:-1]]
-            topics[f"Topic {idx+1}"] = ", ".join(top_words)
-
-        for topic, words in topics.items():
-            st.write(f"**{topic}:** {words}")
-    else:
-        st.warning("No open-ended feedback found.")
-
-# 7. Scenario-Based Simulations
-with tabs[6]:
-    st.subheader("Scenario Simulator: Impact of Personalization Score")
-
-    if 'model' in locals():
-        personalization_var = 'AI shopping assistants give me recommendations that match my taste.'
-
-        if personalization_var in available_likert_cols:
-            coeff = model.params.get(personalization_var, None)
-            if coeff is not None:
-                slider_val = st.slider("Increase Personalization Score by", 0.0, 2.0, 0.0, 0.1)
-                base_avg = filtered_df[personalization_var].replace(likert_map).mean()
-                predicted_change = coeff * slider_val
-                new_score = base_avg + predicted_change
-                st.write(f"Base avg personalization score: {base_avg:.2f}")
-                st.write(f"Predicted change in positive reaction: {predicted_change:.3f}")
-                st.write(f"New predicted average positive reaction score: {new_score:.3f}")
-            else:
-                st.info("Personalization variable coefficient not found in regression model.")
-        else:
-            st.info("Personalization variable not in filtered data.")
-    else:
-        st.info("Run regression first to use scenario simulator.")
-
-# 8. KPIs & Recommendations
-with tabs[7]:
     st.subheader("Key Performance Indicators & Recommendations")
 
     st.metric("Total Survey Responses", len(filtered_df))
@@ -306,7 +226,6 @@ with tabs[7]:
     st.metric("Average Likert Score", round(avg_likert_score, 2))
 
     target_col_recommend = 'Would you recommend using AI-powered shopping assistants to others?'
-
     if target_col_recommend in filtered_df.columns:
         adoption_rate = filtered_df[target_col_recommend].map({'Yes': 1, 'No': 0, 'Maybe': 0}).mean()
         st.metric("Adoption Rate (Recommend AI Assistants)", f"{adoption_rate:.2%}")
