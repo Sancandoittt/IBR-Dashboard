@@ -238,18 +238,14 @@ with tabs[4]:
         st.write("Top Reported Barriers:")
         st.bar_chart(barrier_counts)
 
-    st.markdown("### Recommendations")
-    if adoption_rate is not None:
-        if adoption_rate < 0.5:
-            st.write("- Focus on building trust and transparency about data privacy.")
-        else:
-            st.write("- Continue enhancing personalization and ease of use.")
-        if filtered_df['How comfortable are you with using new digital technology?'].mean() < 3:
-            st.write("- Provide educational resources to increase digital comfort.")
-        else:
-            st.write("- Leverage tech-savvy customers for early adoption campaigns.")
-    else:
-        st.write("Adoption rate data not available for current filters.")
+    st.markdown("**Strategic Recommendations:**")
+st.write("- Prioritize building trust with clear privacy controls and transparency.")
+st.write("- Enhance personalization: Use AI to deliver smarter, more relevant deals and offers.")
+st.write("- Make the AI assistant more enjoyable—add interactive features and rewards.")
+st.write("- Expand language/cultural support to include more shopper segments.")
+st.write("- Provide easy access to human staff for complex queries.")
+st.write("- Continuously collect feedback and iterate the experience.")
+
 
 st.markdown("---")
 st.caption("Dashboard by Sanchit Singh Thapa | MBA Research | SP Jain")
