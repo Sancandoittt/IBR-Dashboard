@@ -172,7 +172,7 @@ with tabs[3]:
     if open_ended_cols:
         all_comments = filtered_df[open_ended_cols].astype(str).agg(' '.join, axis=1)
         sentiments = all_comments.apply(lambda x: TextBlob(x).sentiment.polarity)
-        sentiment_label = sentiments.apply(lambda x: 'Positive' if x > 0.2 else ('Negative' if x < -0.2 else 'Neutral'))
+        sentiment_label = sentiments.apply(lambda x: 'Positive' if x > 0.05 else ('Negative' if x < -0.05 else 'Neutral'))
         sentiment_numeric = sentiment_label.map({'Positive': 1, 'Neutral': 0, 'Negative': -1})
 
         pos_pct = (sentiment_label == "Positive").mean() * 100
